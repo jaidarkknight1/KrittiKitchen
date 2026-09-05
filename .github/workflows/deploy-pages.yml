@@ -24,22 +24,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject feedback token into config
-        env:
-          FEEDBACK_TOKEN: ${{ secrets.FEEDBACK_TOKEN }}
+      - name: Keep config placeholder (no secrets in public site)
         run: |
-          node -e "
-            const fs = require('fs');
-            const token = process.env.FEEDBACK_TOKEN || '';
-            if (!token) {
-              console.error('FEEDBACK_TOKEN secret is missing');
-              process.exit(1);
-            }
-            let cfg = fs.readFileSync('js/config.js', 'utf8');
-            cfg = cfg.replace('__FEEDBACK_TOKEN__', token);
-            fs.writeFileSync('js/config.js', cfg);
-            console.log('Injected feedback token into config');
-          "
+          echo "Public Pages build will not embed GitHub tokens."
+          grep -n "githubToken" js/config.js
 
       - name: Remove files Pages does not need
         run: |
