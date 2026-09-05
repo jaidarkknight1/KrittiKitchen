@@ -77,6 +77,10 @@
     };
   }
 
+  function onGitHubPages() {
+    return /\.github\.io$/i.test(location.hostname);
+  }
+
   async function saveToServer(payload) {
     const res = await fetch("/api/feedback", {
       method: "POST",
@@ -96,6 +100,18 @@
     });
     if (!res.ok) throw new Error("Inbox save failed (" + res.status + ")");
     return res.json().catch(() => ({ ok: true }));
+  }
+
+  async function saveFeedback(payload) {
+    // GitHub Pages has no /api/feedback — go straight to the inbox.
+    if (onGitHubPages()) {
+      return saveToInbox(payload);
+    }
+    try {
+      return await saveToServer(payload);
+    } catch (_) {
+      return saveToInbox(payload);
+    }
   }
 
   function resetForm() {
@@ -121,11 +137,7 @@
     submitBtn.disabled = true;
 
     try {
-      try {
-        await saveToServer(payload);
-      } catch (_) {
-        await saveToInbox(payload);
-      }
+      await saveFeedback(payload);
       showSuccess("Thank you! Your feedback has been submitted.");
       resetForm();
     } catch (err) {

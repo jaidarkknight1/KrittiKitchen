@@ -34,5 +34,14 @@
     "service_and_delivery": 10,
     "overall_experience": 10,
     "suggestion": "browser-style submit works now"
+  },
+  {
+    "timestamp": "2026-09-05T14:54:23.640Z",
+    "taste_of_the_food": 10,
+    "quality_and_freshness": 10,
+    "hygiene_and_packaging": 10,
+    "service_and_delivery": 10,
+    "overall_experience": 10,
+    "suggestion": "test 10000"
   }
 ]

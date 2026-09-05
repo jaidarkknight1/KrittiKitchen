@@ -3,6 +3,10 @@ name: Deploy Pages
 on:
   push:
     branches: [main]
+    # Feedback sync only updates data/ — no need to redeploy the site,
+    # and those commits were previously marking the repo with a red X.
+    paths-ignore:
+      - "data/**"
   workflow_dispatch:
 
 permissions:

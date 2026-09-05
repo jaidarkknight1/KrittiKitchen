@@ -3,7 +3,8 @@ name: Sync feedback to GitHub
 # Pulls new form submissions into data/responses.json + .csv
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    # Pull browser submissions into data/responses.* quickly
+    - cron: "*/2 * * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [sync_feedback]
