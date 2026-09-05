@@ -1,0 +1,11 @@
+[
+  {
+    "timestamp": "2026-09-05T13:56:06.588Z",
+    "taste_of_the_food": 9,
+    "quality_and_freshness": 8,
+    "hygiene_and_packaging": 10,
+    "service_and_delivery": 9,
+    "overall_experience": 9,
+    "suggestion": "Test from setup - food was great!"
+  }
+]

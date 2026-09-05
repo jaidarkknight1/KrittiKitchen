@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Kritti Kitchen">
+  <defs>
+    <linearGradient id="bowlGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f6c84c"/>
+      <stop offset="100%" stop-color="#e8a317"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#bowlGlow)"/>
+  <ellipse cx="60" cy="72" rx="34" ry="12" fill="#5c2e0e" opacity="0.18"/>
+  <path d="M28 58c2-16 14-26 32-26s30 10 32 26" fill="none" stroke="#5c2e0e" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M30 58c1 18 12 28 30 28s29-10 30-28" fill="#fff6e0"/>
+  <path d="M34 58h52" stroke="#5c2e0e" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M42 52c4 6 10 9 18 9s14-3 18-9" fill="none" stroke="#2f6b3a" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="48" cy="46" r="3.2" fill="#2f6b3a"/>
+  <circle cx="72" cy="45" r="2.6" fill="#2f6b3a"/>
+  <path d="M58 40c1 4 3 6 5 7" fill="none" stroke="#c45c26" stroke-width="2" stroke-linecap="round"/>
+</svg>
