@@ -28,6 +28,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Inject feedback token for live form submits
+        env:
+          FEEDBACK_TOKEN: ${{ secrets.FEEDBACK_TOKEN }}
+        run: |
+          if [ -z "$FEEDBACK_TOKEN" ]; then
+            echo "::error::FEEDBACK_TOKEN secret is missing. Add a PAT that can create repository_dispatch events."
+            exit 1
+          fi
+          node <<'NODE'
+          const fs = require("fs");
+          const path = "js/config.js";
+          const token = process.env.FEEDBACK_TOKEN;
+          let src = fs.readFileSync(path, "utf8");
+          if (!src.includes("REPLACE_FEEDBACK_TOKEN")) {
+            throw new Error("config.js is missing REPLACE_FEEDBACK_TOKEN placeholder");
+          }
+          if (!token || token === "REPLACE_FEEDBACK_TOKEN") {
+            throw new Error("FEEDBACK_TOKEN secret is empty");
+          }
+          src = src.split("REPLACE_FEEDBACK_TOKEN").join(token);
+          fs.writeFileSync(path, src);
+          console.log("Injected FEEDBACK_TOKEN into js/config.js for Pages");
+          NODE
+
       - name: Prepare Pages files
         run: |
           echo "Building public Pages artifact"

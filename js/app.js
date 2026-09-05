@@ -81,6 +81,11 @@
     return /\.github\.io$/i.test(location.hostname);
   }
 
+  function hasDispatchToken() {
+    const token = String(cfg.feedbackToken || "");
+    return token && token !== "REPLACE_FEEDBACK_TOKEN";
+  }
+
   async function saveToServer(payload) {
     const res = await fetch("/api/feedback", {
       method: "POST",
@@ -89,6 +94,39 @@
     });
     if (!res.ok) throw new Error("Local API unavailable");
     return res.json();
+  }
+
+  async function saveToGitHub(payload) {
+    const owner = cfg.githubOwner;
+    const repo = cfg.githubRepo;
+    const token = cfg.feedbackToken;
+    if (!owner || !repo || !hasDispatchToken()) {
+      throw new Error("Missing GitHub feedback token");
+    }
+
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/dispatches`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        body: JSON.stringify({
+          event_type: "feedback_submitted",
+          client_payload: payload
+        })
+      }
+    );
+
+    // GitHub returns 204 No Content on success
+    if (res.status !== 204 && !res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error("GitHub save failed (" + res.status + ") " + detail);
+    }
+    return { ok: true };
   }
 
   async function saveToInbox(payload) {
@@ -103,13 +141,28 @@
   }
 
   async function saveFeedback(payload) {
-    // GitHub Pages has no /api/feedback — go straight to the inbox.
     if (onGitHubPages()) {
+      // Prefer direct GitHub write so responses.csv updates within ~30s
+      if (hasDispatchToken()) {
+        try {
+          return await saveToGitHub(payload);
+        } catch (err) {
+          console.warn("GitHub dispatch failed, trying inbox", err);
+        }
+      }
       return saveToInbox(payload);
     }
+
     try {
       return await saveToServer(payload);
     } catch (_) {
+      if (hasDispatchToken()) {
+        try {
+          return await saveToGitHub(payload);
+        } catch (err) {
+          console.warn("GitHub dispatch failed, trying inbox", err);
+        }
+      }
       return saveToInbox(payload);
     }
   }
