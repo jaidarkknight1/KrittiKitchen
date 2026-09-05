@@ -1,8 +1,9 @@
 name: Sync feedback to GitHub
 
+# Pulls new form submissions into data/responses.json + .csv
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [sync_feedback]
@@ -17,8 +18,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Pull live responses and update tracking files
-        run: node scripts/sync-from-mantle.js
+      - name: Sync inbox submissions into tracking files
+        run: node scripts/sync-from-inbox.js
 
       - name: Commit tracking files
         uses: stefanzweifel/git-auto-commit-action@v5

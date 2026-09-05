@@ -1,0 +1,11 @@
+{
+  "cors": true,
+  "actions": false,
+  "password": false,
+  "timeout": 0,
+  "premium": false,
+  "description": "Kritti Kitchen feedback",
+  "default_status": 200,
+  "default_content": "{\"ok\":true}",
+  "default_content_type": "application/json"
+}

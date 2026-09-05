@@ -77,140 +77,6 @@
     };
   }
 
-  function csvEscape(value) {
-    const str = String(value ?? "");
-    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-    return str;
-  }
-
-  function toCsvRow(entry) {
-    return [
-      entry.timestamp,
-      entry.taste_of_the_food,
-      entry.quality_and_freshness,
-      entry.hygiene_and_packaging,
-      entry.service_and_delivery,
-      entry.overall_experience,
-      entry.suggestion || ""
-    ]
-      .map(csvEscape)
-      .join(",");
-  }
-
-  function hasToken() {
-    return cfg.githubToken && cfg.githubToken !== "__FEEDBACK_TOKEN__" && cfg.githubToken.length > 10;
-  }
-
-  async function githubGetFile(path) {
-    const url = `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${path}`;
-    const res = await fetch(url, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${cfg.githubToken}`
-      }
-    });
-    if (res.status === 404) return { sha: null, text: "" };
-    if (!res.ok) throw new Error(`GitHub read failed (${res.status})`);
-    const data = await res.json();
-    const text = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ""))));
-    return { sha: data.sha, text };
-  }
-
-  async function githubPutFile(path, content, sha, message) {
-    const url = `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${path}`;
-    const body = {
-      message,
-      content: btoa(unescape(encodeURIComponent(content))),
-      branch: "main"
-    };
-    if (sha) body.sha = sha;
-
-    const res = await fetch(url, {
-      method: "PUT",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${cfg.githubToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (res.status === 409 || res.status === 422) {
-      const err = new Error("conflict");
-      err.code = "conflict";
-      throw err;
-    }
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `GitHub write failed (${res.status})`);
-    }
-  }
-
-  async function saveToGitHub(payload) {
-    if (!hasToken()) throw new Error("Feedback token not configured");
-
-    let lastError;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const jsonFile = await githubGetFile("data/responses.json");
-        let list = [];
-        if (jsonFile.text) {
-          try {
-            const parsed = JSON.parse(jsonFile.text);
-            if (Array.isArray(parsed)) list = parsed;
-          } catch (_) {
-            list = [];
-          }
-        }
-        list.push(payload);
-        await githubPutFile(
-          "data/responses.json",
-          JSON.stringify(list, null, 2) + "\n",
-          jsonFile.sha,
-          "chore: record customer feedback"
-        );
-
-        const csvFile = await githubGetFile("data/responses.csv");
-        const header =
-          "timestamp,taste_of_the_food,quality_and_freshness,hygiene_and_packaging,service_and_delivery,overall_experience,suggestion\n";
-        let csv = csvFile.text && csvFile.text.trim() ? csvFile.text : header;
-        if (!csv.endsWith("\n")) csv += "\n";
-        csv += toCsvRow(payload) + "\n";
-        await githubPutFile(
-          "data/responses.csv",
-          csv,
-          csvFile.sha,
-          "chore: record customer feedback (csv)"
-        );
-
-        return { total: list.length };
-      } catch (err) {
-        lastError = err;
-        if (err.code !== "conflict") break;
-      }
-    }
-    throw lastError || new Error("Could not save to GitHub");
-  }
-
-  async function dispatchAction(payload) {
-    if (!hasToken()) return;
-    await fetch(
-      `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/dispatches`,
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${cfg.githubToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          event_type: "feedback_submitted",
-          client_payload: payload
-        })
-      }
-    );
-  }
-
   async function saveToServer(payload) {
     const res = await fetch("/api/feedback", {
       method: "POST",
@@ -219,6 +85,17 @@
     });
     if (!res.ok) throw new Error("Local API unavailable");
     return res.json();
+  }
+
+  async function saveToInbox(payload) {
+    if (!cfg.inboxUrl) throw new Error("Missing inbox URL");
+    const res = await fetch(cfg.inboxUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error("Inbox save failed (" + res.status + ")");
+    return res.json().catch(() => ({ ok: true }));
   }
 
   function resetForm() {
@@ -247,14 +124,13 @@
       try {
         await saveToServer(payload);
       } catch (_) {
-        await saveToGitHub(payload);
-        dispatchAction(payload).catch(() => {});
+        await saveToInbox(payload);
       }
       showSuccess("Thank you! Your feedback has been submitted.");
       resetForm();
     } catch (err) {
       console.error(err);
-      showError("Could not save feedback to GitHub. Please try again in a moment.");
+      showError("Could not save feedback. Please try again.");
     } finally {
       submitBtn.disabled = false;
     }

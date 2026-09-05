@@ -7,8 +7,7 @@
     { key: "overall_experience", label: "Overall experience", short: "Overall" }
   ];
 
-  const REPO_JSON =
-    "https://raw.githubusercontent.com/jaidarkknight1/KrittiKitchen/main/data/responses.json";
+  const INBOX_TOKEN = "7cdadd99-e3ee-4def-aa0f-7423dd37eb37";
 
   const errorEl = document.getElementById("dash-error");
   const emptyEl = document.getElementById("dash-empty");
@@ -53,48 +52,110 @@
     return "low";
   }
 
-  async function loadResponses() {
-    // GitHub Contents API (public repo) — fresher than raw CDN cache
+  function scoreOk(n) {
+    return Number.isInteger(n) && n >= 1 && n <= 10;
+  }
+
+  function normalizeEntry(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const entry = {
+      timestamp: raw.timestamp || new Date().toISOString(),
+      taste_of_the_food: Number(raw.taste_of_the_food),
+      quality_and_freshness: Number(raw.quality_and_freshness),
+      hygiene_and_packaging: Number(raw.hygiene_and_packaging),
+      service_and_delivery: Number(raw.service_and_delivery),
+      overall_experience: Number(raw.overall_experience),
+      suggestion: String(raw.suggestion || "")
+    };
+    const keys = [
+      "taste_of_the_food",
+      "quality_and_freshness",
+      "hygiene_and_packaging",
+      "service_and_delivery",
+      "overall_experience"
+    ];
+    if (!keys.every((k) => scoreOk(entry[k]))) return null;
+    return entry;
+  }
+
+  function mergeRows(rows) {
+    const map = new Map();
+    rows.forEach((r) => {
+      if (!r || !r.timestamp) return;
+      map.set(r.timestamp + "|" + r.overall_experience + "|" + r.suggestion, r);
+    });
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+    );
+  }
+
+  async function loadFromGitHub() {
     try {
       const apiRes = await fetch(
         "https://api.github.com/repos/jaidarkknight1/KrittiKitchen/contents/data/responses.json?ref=main&ts=" +
           Date.now(),
-        {
-          cache: "no-store",
-          headers: { Accept: "application/vnd.github+json" }
-        }
+        { cache: "no-store", headers: { Accept: "application/vnd.github+json" } }
       );
       if (apiRes.ok) {
         const meta = await apiRes.json();
-        const text = decodeURIComponent(escape(atob(String(meta.content || "").replace(/\n/g, ""))));
+        const text = decodeURIComponent(
+          escape(atob(String(meta.content || "").replace(/\n/g, "")))
+        );
         const data = JSON.parse(text);
-        if (Array.isArray(data)) {
-          return data.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        }
+        if (Array.isArray(data)) return data.map(normalizeEntry).filter(Boolean);
       }
-    } catch (_) {
-      /* fall through */
-    }
+    } catch (_) {}
 
-    const urls = [
-      "https://raw.githubusercontent.com/jaidarkknight1/KrittiKitchen/main/data/responses.json?ts=" +
-        Date.now(),
-      "../data/responses.json?ts=" + Date.now()
-    ];
-
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) continue;
+    try {
+      const res = await fetch("../data/responses.json?ts=" + Date.now(), {
+        cache: "no-store"
+      });
+      if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) {
-          return data.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        }
-      } catch (_) {
-        /* try next */
+        if (Array.isArray(data)) return data.map(normalizeEntry).filter(Boolean);
       }
+    } catch (_) {}
+
+    return [];
+  }
+
+  async function loadFromInbox() {
+    try {
+      const res = await fetch(
+        `https://webhook.site/token/${INBOX_TOKEN}/requests?sorting=newest&per_page=50&ts=` +
+          Date.now(),
+        { cache: "no-store", headers: { Accept: "application/json" } }
+      );
+      if (!res.ok) return [];
+      const body = await res.json();
+      const rows = body.data || [];
+      const out = [];
+      rows.forEach((req) => {
+        try {
+          const parsed = JSON.parse(req.content);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((item) => {
+              const n = normalizeEntry(item);
+              if (n) out.push(n);
+            });
+          } else {
+            const n = normalizeEntry(parsed);
+            if (n) out.push(n);
+          }
+        } catch (_) {}
+      });
+      return out;
+    } catch (_) {
+      return [];
     }
-    throw new Error("Could not load responses");
+  }
+
+  async function loadResponses() {
+    const [githubRows, inboxRows] = await Promise.all([
+      loadFromGitHub(),
+      loadFromInbox()
+    ]);
+    return mergeRows([].concat(githubRows, inboxRows));
   }
 
   function renderStats(rows) {
@@ -245,5 +306,5 @@
 
   refreshBtn.addEventListener("click", refresh);
   refresh();
-  setInterval(refresh, 30000);
+  setInterval(refresh, 15000);
 })();
