@@ -33,3 +33,9 @@ npm start
 ```
 
 Open http://localhost:3000 — each submit appends to the tracking files.
+
+## Analytics dashboard
+
+**https://jaidarkknight1.github.io/KrittiKitchen/analytics/**
+
+Shows total responses, average scores, 1–10 breakdowns, and every answer.

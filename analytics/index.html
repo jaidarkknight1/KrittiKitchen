@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a120b" />
+  <meta name="robots" content="noindex" />
+  <title>Kritti Kitchen — Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+  <link rel="stylesheet" href="../css/analytics.css" />
+  <link rel="icon" href="../assets/logo.svg" type="image/svg+xml" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true">
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="grain"></div>
+  </div>
+
+  <main class="shell analytics-shell">
+    <header class="analytics-header">
+      <div class="analytics-top">
+        <a class="back-link" href="../">← Feedback form</a>
+        <button type="button" class="refresh-btn" id="refresh-btn">Refresh</button>
+      </div>
+      <div class="logo-wrap logo-wrap-sm">
+        <img class="logo logo-sm" src="../assets/logo.svg" alt="" width="56" height="56" />
+      </div>
+      <h1 class="brand brand-sm">Analytics</h1>
+      <p class="tagline">Kritti Kitchen feedback dashboard</p>
+    </header>
+
+    <p id="dash-error" class="form-error" hidden role="alert"></p>
+    <p id="dash-empty" class="dash-empty" hidden>No responses yet. Submit feedback on the form to see data here.</p>
+
+    <section class="stat-grid" id="stat-grid" hidden>
+      <article class="stat-card stat-hero">
+        <p class="stat-label">Total responses</p>
+        <p class="stat-value" id="stat-total">0</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Average overall</p>
+        <p class="stat-value" id="stat-overall">—</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">With suggestions</p>
+        <p class="stat-value" id="stat-suggestions">0</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Latest response</p>
+        <p class="stat-value stat-value-sm" id="stat-latest">—</p>
+      </article>
+    </section>
+
+    <section class="panel" id="averages-panel" hidden>
+      <h2>Average score by question</h2>
+      <div id="averages" class="averages"></div>
+    </section>
+
+    <section class="panel" id="distribution-panel" hidden>
+      <h2>Score breakdown (1–10)</h2>
+      <div id="distributions" class="distributions"></div>
+    </section>
+
+    <section class="panel" id="responses-panel" hidden>
+      <h2>All responses</h2>
+      <div class="table-wrap">
+        <table class="responses-table" id="responses-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>When</th>
+              <th>Taste</th>
+              <th>Quality</th>
+              <th>Hygiene</th>
+              <th>Service</th>
+              <th>Overall</th>
+              <th>Suggestion</th>
+            </tr>
+          </thead>
+          <tbody id="responses-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="../js/analytics.js"></script>
+</body>
+</html>
