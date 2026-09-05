@@ -8,3 +8,4 @@ timestamp,taste_of_the_food,quality_and_freshness,hygiene_and_packaging,service_
 2026-09-05T15:01:34.584Z,10,10,10,10,10,cars
 2026-09-05T15:04:07.887Z,9,9,9,9,9,dispatch-probe
 2026-09-05T15:12:00.856Z,10,10,10,10,10,agent-live-verify
+2026-09-05T15:13:05.440Z,8,8,9,8,9,final-check-ok
