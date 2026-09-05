@@ -2,3 +2,4 @@ timestamp,taste_of_the_food,quality_and_freshness,hygiene_and_packaging,service_
 2026-09-05T13:56:06.588Z,9,8,10,9,9,Test from setup - food was great!
 2026-09-05T14:20:00.000Z,10,10,10,10,10,really awesome food
 2026-09-05T14:40:39.434Z,8,8,9,7,8,live submit test after github fix
+2026-09-05T14:49:00.000Z,10,10,10,10,10,browser-style submit works now
