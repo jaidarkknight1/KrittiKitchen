@@ -24,13 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Keep config placeholder (no secrets in public site)
+      - name: Prepare Pages files
         run: |
-          echo "Public Pages build will not embed GitHub tokens."
-          grep -n "githubToken" js/config.js
-
-      - name: Remove files Pages does not need
-        run: |
+          echo "Building public Pages artifact"
           rm -rf node_modules .git
           rm -f package-lock.json
 
