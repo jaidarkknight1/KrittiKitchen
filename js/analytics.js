@@ -7,7 +7,8 @@
     { key: "overall_experience", label: "Overall experience", short: "Overall" }
   ];
 
-  const MANTLE_URL = "https://mantledb.sh/v2/kritti-kitchen-fb-43939/responses";
+  const REPO_JSON =
+    "https://raw.githubusercontent.com/jaidarkknight1/KrittiKitchen/main/data/responses.json";
 
   const errorEl = document.getElementById("dash-error");
   const emptyEl = document.getElementById("dash-empty");
@@ -53,12 +54,21 @@
   }
 
   async function loadResponses() {
-    // Live store first (updates immediately after submit)
+    // GitHub Contents API (public repo) — fresher than raw CDN cache
     try {
-      const live = await fetch(MANTLE_URL + "?ts=" + Date.now(), { cache: "no-store" });
-      if (live.ok) {
-        const data = await live.json();
-        if (Array.isArray(data) && data.length) {
+      const apiRes = await fetch(
+        "https://api.github.com/repos/jaidarkknight1/KrittiKitchen/contents/data/responses.json?ref=main&ts=" +
+          Date.now(),
+        {
+          cache: "no-store",
+          headers: { Accept: "application/vnd.github+json" }
+        }
+      );
+      if (apiRes.ok) {
+        const meta = await apiRes.json();
+        const text = decodeURIComponent(escape(atob(String(meta.content || "").replace(/\n/g, ""))));
+        const data = JSON.parse(text);
+        if (Array.isArray(data)) {
           return data.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         }
       }
@@ -66,12 +76,25 @@
       /* fall through */
     }
 
-    // Fallback: GitHub Pages copy of the file
-    const res = await fetch("../data/responses.json?ts=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("Could not load responses");
-    const data = await res.json();
-    if (!Array.isArray(data)) throw new Error("Invalid responses file");
-    return data.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const urls = [
+      "https://raw.githubusercontent.com/jaidarkknight1/KrittiKitchen/main/data/responses.json?ts=" +
+        Date.now(),
+      "../data/responses.json?ts=" + Date.now()
+    ];
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          return data.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+      } catch (_) {
+        /* try next */
+      }
+    }
+    throw new Error("Could not load responses");
   }
 
   function renderStats(rows) {
@@ -222,4 +245,5 @@
 
   refreshBtn.addEventListener("click", refresh);
   refresh();
+  setInterval(refresh, 30000);
 })();

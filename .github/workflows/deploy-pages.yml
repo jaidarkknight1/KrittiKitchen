@@ -1,0 +1,59 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject feedback token into config
+        env:
+          FEEDBACK_TOKEN: ${{ secrets.FEEDBACK_TOKEN }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const token = process.env.FEEDBACK_TOKEN || '';
+            if (!token) {
+              console.error('FEEDBACK_TOKEN secret is missing');
+              process.exit(1);
+            }
+            let cfg = fs.readFileSync('js/config.js', 'utf8');
+            cfg = cfg.replace('__FEEDBACK_TOKEN__', token);
+            fs.writeFileSync('js/config.js', cfg);
+            console.log('Injected feedback token into config');
+          "
+
+      - name: Remove files Pages does not need
+        run: |
+          rm -rf node_modules .git
+          rm -f package-lock.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

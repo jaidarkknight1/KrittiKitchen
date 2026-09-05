@@ -1,6 +1,6 @@
 window.KRITTI_CONFIG = {
-  /* Live response store (GitHub Pages cannot write files by itself) */
-  mantleUrl: "https://mantledb.sh/v2/kritti-kitchen-fb-43939/responses",
+  /* Injected at deploy time by GitHub Actions — do not paste secrets into git */
+  githubToken: "__FEEDBACK_TOKEN__",
 
   githubOwner: "jaidarkknight1",
   githubRepo: "KrittiKitchen"
