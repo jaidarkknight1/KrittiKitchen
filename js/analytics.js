@@ -7,7 +7,7 @@
     { key: "overall_experience", label: "Overall experience", short: "Overall" }
   ];
 
-  const INBOX_TOKEN = "7cdadd99-e3ee-4def-aa0f-7423dd37eb37";
+  const STORE_URL = "https://mantledb.sh/v2/kritti-kitchen-fb-43939/responses";
 
   const errorEl = document.getElementById("dash-error");
   const emptyEl = document.getElementById("dash-empty");
@@ -119,43 +119,28 @@
     return [];
   }
 
-  async function loadFromInbox() {
+  async function loadFromStore() {
     try {
-      const res = await fetch(
-        `https://webhook.site/token/${INBOX_TOKEN}/requests?sorting=newest&per_page=50&ts=` +
-          Date.now(),
-        { cache: "no-store", headers: { Accept: "application/json" } }
-      );
-      if (!res.ok) return [];
-      const body = await res.json();
-      const rows = body.data || [];
-      const out = [];
-      rows.forEach((req) => {
-        try {
-          const parsed = JSON.parse(req.content);
-          if (Array.isArray(parsed)) {
-            parsed.forEach((item) => {
-              const n = normalizeEntry(item);
-              if (n) out.push(n);
-            });
-          } else {
-            const n = normalizeEntry(parsed);
-            if (n) out.push(n);
-          }
-        } catch (_) {}
+      const res = await fetch(STORE_URL + "?ts=" + Date.now(), {
+        cache: "no-store",
+        headers: { Accept: "application/json" }
       });
-      return out;
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (Array.isArray(data)) return data.map(normalizeEntry).filter(Boolean);
+      const one = normalizeEntry(data);
+      return one ? [one] : [];
     } catch (_) {
       return [];
     }
   }
 
   async function loadResponses() {
-    const [githubRows, inboxRows] = await Promise.all([
+    const [githubRows, storeRows] = await Promise.all([
       loadFromGitHub(),
-      loadFromInbox()
+      loadFromStore()
     ]);
-    return mergeRows([].concat(githubRows, inboxRows));
+    return mergeRows([].concat(githubRows, storeRows));
   }
 
   function renderStats(rows) {

@@ -77,13 +77,14 @@
     };
   }
 
-  function onGitHubPages() {
-    return /\.github\.io$/i.test(location.hostname);
+  function entryKey(entry) {
+    return `${entry.timestamp}|${entry.overall_experience}|${entry.suggestion || ""}`;
   }
 
-  function hasDispatchToken() {
-    const token = String(cfg.feedbackToken || "");
-    return token && token !== "REPLACE_FEEDBACK_TOKEN";
+  function normalizeRows(data) {
+    if (Array.isArray(data)) return data.filter((row) => row && typeof row === "object");
+    if (data && typeof data === "object" && data.timestamp) return [data];
+    return [];
   }
 
   async function saveToServer(payload) {
@@ -96,74 +97,47 @@
     return res.json();
   }
 
-  async function saveToGitHub(payload) {
-    const owner = cfg.githubOwner;
-    const repo = cfg.githubRepo;
-    const token = cfg.feedbackToken;
-    if (!owner || !repo || !hasDispatchToken()) {
-      throw new Error("Missing GitHub feedback token");
+  async function saveToStore(payload) {
+    if (!cfg.storeUrl) throw new Error("Missing store URL");
+
+    let rows = [];
+    try {
+      const current = await fetch(cfg.storeUrl + "?ts=" + Date.now(), {
+        cache: "no-store",
+        headers: { Accept: "application/json" }
+      });
+      if (current.ok) {
+        rows = normalizeRows(await current.json());
+      }
+    } catch (_) {
+      rows = [];
     }
 
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/dispatches`,
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: "Bearer " + token,
-          "Content-Type": "application/json",
-          "X-GitHub-Api-Version": "2022-11-28"
-        },
-        body: JSON.stringify({
-          event_type: "feedback_submitted",
-          client_payload: payload
-        })
-      }
+    const map = new Map();
+    rows.forEach((row) => map.set(entryKey(row), row));
+    map.set(entryKey(payload), payload);
+    const next = Array.from(map.values()).sort(
+      (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
     );
 
-    // GitHub returns 204 No Content on success
-    if (res.status !== 204 && !res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error("GitHub save failed (" + res.status + ") " + detail);
-    }
-    return { ok: true };
-  }
-
-  async function saveToInbox(payload) {
-    if (!cfg.inboxUrl) throw new Error("Missing inbox URL");
-    const res = await fetch(cfg.inboxUrl, {
+    const res = await fetch(cfg.storeUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(next)
     });
-    if (!res.ok) throw new Error("Inbox save failed (" + res.status + ")");
+    if (!res.ok) throw new Error("Store save failed (" + res.status + ")");
     return res.json().catch(() => ({ ok: true }));
   }
 
   async function saveFeedback(payload) {
-    if (onGitHubPages()) {
-      // Prefer direct GitHub write so responses.csv updates within ~30s
-      if (hasDispatchToken()) {
-        try {
-          return await saveToGitHub(payload);
-        } catch (err) {
-          console.warn("GitHub dispatch failed, trying inbox", err);
-        }
-      }
-      return saveToInbox(payload);
+    const onPages = /\.github\.io$/i.test(location.hostname);
+    if (onPages) {
+      return saveToStore(payload);
     }
-
     try {
       return await saveToServer(payload);
     } catch (_) {
-      if (hasDispatchToken()) {
-        try {
-          return await saveToGitHub(payload);
-        } catch (err) {
-          console.warn("GitHub dispatch failed, trying inbox", err);
-        }
-      }
-      return saveToInbox(payload);
+      return saveToStore(payload);
     }
   }
 
