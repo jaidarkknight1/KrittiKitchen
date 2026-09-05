@@ -1,0 +1,27 @@
+name: Sync feedback to GitHub
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [sync_feedback]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull live responses and update tracking files
+        run: node scripts/sync-from-mantle.js
+
+      - name: Commit tracking files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: sync feedback responses"
+          file_pattern: data/responses.json data/responses.csv

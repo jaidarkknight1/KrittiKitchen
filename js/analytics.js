@@ -7,6 +7,8 @@
     { key: "overall_experience", label: "Overall experience", short: "Overall" }
   ];
 
+  const MANTLE_URL = "https://mantledb.sh/v2/kritti-kitchen-fb-43939/responses";
+
   const errorEl = document.getElementById("dash-error");
   const emptyEl = document.getElementById("dash-empty");
   const statGrid = document.getElementById("stat-grid");
@@ -51,8 +53,22 @@
   }
 
   async function loadResponses() {
+    // Live store first (updates immediately after submit)
+    try {
+      const live = await fetch(MANTLE_URL + "?ts=" + Date.now(), { cache: "no-store" });
+      if (live.ok) {
+        const data = await live.json();
+        if (Array.isArray(data) && data.length) {
+          return data.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+      }
+    } catch (_) {
+      /* fall through */
+    }
+
+    // Fallback: GitHub Pages copy of the file
     const res = await fetch("../data/responses.json?ts=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("Could not load responses.json");
+    if (!res.ok) throw new Error("Could not load responses");
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error("Invalid responses file");
     return data.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -198,7 +214,7 @@
     } catch (err) {
       console.error(err);
       showDashboard(false);
-      showError("Could not load analytics data. Check data/responses.json.");
+      showError("Could not load analytics data.");
     } finally {
       refreshBtn.disabled = false;
     }

@@ -77,26 +77,6 @@
     };
   }
 
-  function csvEscape(value) {
-    const str = String(value ?? "");
-    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-    return str;
-  }
-
-  function toCsvRow(entry) {
-    return [
-      entry.timestamp,
-      entry.taste_of_the_food,
-      entry.quality_and_freshness,
-      entry.hygiene_and_packaging,
-      entry.service_and_delivery,
-      entry.overall_experience,
-      entry.suggestion || ""
-    ]
-      .map(csvEscape)
-      .join(",");
-  }
-
   async function saveToServer(payload) {
     const res = await fetch("/api/feedback", {
       method: "POST",
@@ -110,92 +90,29 @@
     return res.json();
   }
 
-  async function githubGetFile(path) {
-    const url = `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${path}`;
-    const res = await fetch(url, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${cfg.githubToken}`
-      }
-    });
-    if (res.status === 404) return { sha: null, text: null };
-    if (!res.ok) throw new Error(`GitHub read failed (${res.status})`);
-    const data = await res.json();
-    const text = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ""))));
-    return { sha: data.sha, text };
-  }
+  async function saveToMantle(payload) {
+    if (!cfg.mantleUrl) throw new Error("Missing live store URL");
 
-  async function githubPutFile(path, content, sha, message) {
-    const url = `https://api.github.com/repos/${cfg.githubOwner}/${cfg.githubRepo}/contents/${path}`;
-    const body = {
-      message,
-      content: btoa(unescape(encodeURIComponent(content))),
-      branch: "main"
-    };
-    if (sha) body.sha = sha;
-
-    const res = await fetch(url, {
-      method: "PUT",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${cfg.githubToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `GitHub write failed (${res.status})`);
-    }
-  }
-
-  async function saveToGitHub(payload) {
-    if (!cfg.githubToken) throw new Error("No GitHub token");
-
-    const jsonFile = await githubGetFile("data/responses.json");
     let list = [];
-    if (jsonFile.text) {
-      try {
-        list = JSON.parse(jsonFile.text);
-        if (!Array.isArray(list)) list = [];
-      } catch {
-        list = [];
-      }
+    const getRes = await fetch(cfg.mantleUrl + "?ts=" + Date.now(), { cache: "no-store" });
+    if (getRes.ok) {
+      const data = await getRes.json();
+      if (Array.isArray(data)) list = data;
     }
-    list.push(payload);
-    const jsonContent = JSON.stringify(list, null, 2) + "\n";
-    await githubPutFile(
-      "data/responses.json",
-      jsonContent,
-      jsonFile.sha,
-      "chore: record customer feedback"
-    );
 
-    const csvFile = await githubGetFile("data/responses.csv");
-    const header =
-      "timestamp,taste_of_the_food,quality_and_freshness,hygiene_and_packaging,service_and_delivery,overall_experience,suggestion\n";
-    let csv = csvFile.text && csvFile.text.trim() ? csvFile.text : header;
-    if (!csv.endsWith("\n")) csv += "\n";
-    csv += toCsvRow(payload) + "\n";
-    await githubPutFile(
-      "data/responses.csv",
-      csv,
-      csvFile.sha,
-      "chore: record customer feedback (csv)"
-    );
+    list.push(payload);
+
+    const putRes = await fetch(cfg.mantleUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(list)
+    });
+
+    if (!putRes.ok) {
+      throw new Error("Could not save to live store");
+    }
 
     return { total: list.length };
-  }
-
-  function backupLocal(payload) {
-    try {
-      const key = "kritti_feedback_backup";
-      const existing = JSON.parse(localStorage.getItem(key) || "[]");
-      existing.push(payload);
-      localStorage.setItem(key, JSON.stringify(existing));
-    } catch (_) {
-      /* ignore */
-    }
   }
 
   function resetForm() {
@@ -221,25 +138,18 @@
     submitBtn.disabled = true;
 
     try {
-      await saveToServer(payload);
+      try {
+        await saveToServer(payload);
+      } catch (_) {
+        /* GitHub Pages has no Express API — use live store */
+      }
+
+      await saveToMantle(payload);
       showSuccess("Thank you! Your feedback has been submitted.");
       resetForm();
-    } catch (_) {
-      if (cfg.githubToken) {
-        try {
-          await saveToGitHub(payload);
-          showSuccess("Thank you! Your feedback has been submitted.");
-          resetForm();
-        } catch (ghErr) {
-          console.warn(ghErr);
-          backupLocal(payload);
-          showError("Could not save feedback right now. Please try again.");
-        }
-      } else {
-        backupLocal(payload);
-        showSuccess("Thank you! Your feedback has been submitted.");
-        resetForm();
-      }
+    } catch (err) {
+      console.error(err);
+      showError("Could not save feedback. Please try again.");
     } finally {
       submitBtn.disabled = false;
     }
