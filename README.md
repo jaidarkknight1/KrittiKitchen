@@ -6,7 +6,7 @@ Customer feedback form for **Kritti Kitchen**.
 
 **https://jaidarkknight1.github.io/KrittiKitchen/**
 
-## Questions (same as before)
+## Questions
 
 1. Taste of the food — 1 to 10  
 2. Quality & freshness — 1 to 10  
@@ -16,9 +16,9 @@ Customer feedback form for **Kritti Kitchen**.
 6. Any suggestion? (optional)
 
 Labels: **Needs improvement** → **Excellent**  
-Button: **Send Feedback on WhatsApp**
+Button: **Submit Feedback**
 
-## Response tracking files (on GitHub)
+## Response tracking files
 
 | File | What it is |
 |------|------------|
@@ -32,12 +32,4 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000 — each submit appends to the tracking files and opens WhatsApp.
-
-## WhatsApp number
-
-Edit `js/config.js` and set your real number:
-
-```js
-whatsappNumber: "91XXXXXXXXXX"
-```
+Open http://localhost:3000 — each submit appends to the tracking files.

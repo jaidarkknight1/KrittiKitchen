@@ -77,24 +77,6 @@
     };
   }
 
-  function buildWhatsAppMessage(payload) {
-    const lines = [
-      "Kritti Kitchen Feedback",
-      "",
-      `Taste of the food: ${payload.taste_of_the_food}/10`,
-      `Quality & freshness: ${payload.quality_and_freshness}/10`,
-      `Hygiene & packaging: ${payload.hygiene_and_packaging}/10`,
-      `Service & delivery: ${payload.service_and_delivery}/10`,
-      `Overall experience: ${payload.overall_experience}/10`
-    ];
-
-    if (payload.suggestion) {
-      lines.push("", `Suggestion: ${payload.suggestion}`);
-    }
-
-    return lines.join("\n");
-  }
-
   function csvEscape(value) {
     const str = String(value ?? "");
     if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
@@ -205,15 +187,6 @@
     return { total: list.length };
   }
 
-  function openWhatsApp(payload) {
-    const number = cfg.whatsappNumber || "";
-    const text = encodeURIComponent(buildWhatsAppMessage(payload));
-    const url = number
-      ? `https://wa.me/${number}?text=${text}`
-      : `https://wa.me/?text=${text}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-
   function backupLocal(payload) {
     try {
       const key = "kritti_feedback_backup";
@@ -223,6 +196,15 @@
     } catch (_) {
       /* ignore */
     }
+  }
+
+  function resetForm() {
+    Object.keys(ratings).forEach((key) => delete ratings[key]);
+    document.querySelectorAll(".scale-btn").forEach((btn) => {
+      btn.classList.remove("is-selected");
+      btn.setAttribute("aria-pressed", "false");
+    });
+    document.getElementById("suggestion").value = "";
   }
 
   form.addEventListener("submit", async (event) => {
@@ -238,30 +220,29 @@
     const payload = buildPayload();
     submitBtn.disabled = true;
 
-    let saved = false;
     try {
       await saveToServer(payload);
-      saved = true;
-      showSuccess("Saved to responses file. Opening WhatsApp…");
+      showSuccess("Thank you! Your feedback has been submitted.");
+      resetForm();
     } catch (_) {
       if (cfg.githubToken) {
         try {
           await saveToGitHub(payload);
-          saved = true;
-          showSuccess("Saved to GitHub tracking file. Opening WhatsApp…");
+          showSuccess("Thank you! Your feedback has been submitted.");
+          resetForm();
         } catch (ghErr) {
           console.warn(ghErr);
+          backupLocal(payload);
+          showError("Could not save feedback right now. Please try again.");
         }
+      } else {
+        backupLocal(payload);
+        showSuccess("Thank you! Your feedback has been submitted.");
+        resetForm();
       }
+    } finally {
+      submitBtn.disabled = false;
     }
-
-    if (!saved) {
-      backupLocal(payload);
-      showSuccess("Opening WhatsApp… (tracking file updates when the server is running)");
-    }
-
-    openWhatsApp(payload);
-    submitBtn.disabled = false;
   });
 
   buildScales();
